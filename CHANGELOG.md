@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.10](https://github.com/BuildWithAIs/voicekey/compare/v0.1.9...v0.1.10) (2026-03-29)
+
+### Features
+
+- **settings:** improve autosave status feedback ([d691c9f](https://github.com/BuildWithAIs/voicekey/commit/d691c9f84ba8a966f8b2966f4d17ae8bbe24c55a))
+
+### Bug Fixes
+
+- keep auto launch startup in background ([bdd677e](https://github.com/BuildWithAIs/voicekey/commit/bdd677e4243dfed15d37a3bcacba6cc31e16dea8))
+
 ### [0.1.9](https://github.com/BuildWithAIs/voicekey/compare/v0.1.8...v0.1.9) (2026-03-29)
 
 ### Features
