@@ -5,6 +5,7 @@
  * - CONFIG_GET: 获取全部配置
  * - CONFIG_SET: 设置配置（支持 app/asr/llmRefine/hotkey 部分更新）
  * - CONFIG_TEST: 测试 ASR 连接
+ * - CONFIG_REFINE_TEST: 测试文本润色连接
  *
  * @module electron/main/ipc/config-handlers
  */
@@ -22,6 +23,7 @@ import { broadcastLanguageSnapshot, getMainLanguageSnapshot, setMainLanguage } f
 import { ASRProvider } from '../asr-provider'
 import { hotkeyManager } from '../hotkey-manager'
 import { ioHookManager } from '../iohook-manager'
+import type { TextRefiner } from '../refine'
 
 /**
  * 配置处理器外部依赖
@@ -34,12 +36,12 @@ export type ConfigHandlersDeps = {
   refreshLocalizedUi: () => void
   /** 重新初始化 ASR Provider */
   initializeASRProvider: () => void
-  /** 重新初始化 LLM Provider */
-  initializeLLMProvider: () => void
   /** 重新注册全局快捷键 */
   registerGlobalHotkeys: () => void
   /** 获取当前 ASR Provider 实例 */
   getAsrProvider: () => ASRProvider | null
+  /** 获取文本润色服务 */
+  getRefineService: () => TextRefiner | null
 }
 
 let deps: ConfigHandlersDeps
@@ -95,7 +97,6 @@ export function registerConfigHandlers(): void {
       }
       if (config.llmRefine) {
         configManager.setLLMRefineConfig(config.llmRefine)
-        deps.initializeLLMProvider()
       }
       if (config.hotkey) {
         configManager.setHotkeyConfig(config.hotkey)
@@ -120,5 +121,24 @@ export function registerConfigHandlers(): void {
       return false
     }
     return await asrProvider.testConnection()
+  })
+
+  ipcMain.handle(IPC_CHANNELS.CONFIG_REFINE_TEST, async (_event, config: LLMRefineConfig) => {
+    const refineService = deps.getRefineService()
+    if (!refineService) {
+      return {
+        ok: false,
+        message: 'Text refinement service is unavailable',
+      }
+    }
+
+    if (!config) {
+      return {
+        ok: false,
+        message: 'Text refinement config is required',
+      }
+    }
+
+    return await refineService.testConnection(config)
   })
 }

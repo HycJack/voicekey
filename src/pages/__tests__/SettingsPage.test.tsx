@@ -28,6 +28,7 @@ vi.mock('@/components/LogViewerDialog', () => ({
 const mockGetConfig = vi.fn()
 const mockSetConfig = vi.fn()
 const mockTestConnection = vi.fn()
+const mockTestRefineConnection = vi.fn()
 const mockGetUpdateStatus = vi.fn()
 const mockCheckForUpdates = vi.fn()
 const mockOpenExternal = vi.fn()
@@ -38,6 +39,7 @@ const assignElectronAPI = () => {
     getConfig: mockGetConfig,
     setConfig: mockSetConfig,
     testConnection: mockTestConnection,
+    testRefineConnection: mockTestRefineConnection,
     getUpdateStatus: mockGetUpdateStatus,
     checkForUpdates: mockCheckForUpdates,
     openExternal: mockOpenExternal,
@@ -55,7 +57,10 @@ const baseConfig = {
     language: 'auto',
   },
   llmRefine: {
-    enabled: true,
+    enabled: false,
+    endpoint: '',
+    model: '',
+    apiKey: '',
   },
   hotkey: { pttKey: 'Command+K', toggleSettings: 'Command+,' },
 }
@@ -155,6 +160,71 @@ describe('SettingsPage', () => {
     await waitFor(() =>
       expect(screen.getByText('settings.result.connectionFailed')).toBeInTheDocument(),
     )
+  })
+
+  it('tests refine connection for current manual config', async () => {
+    mockTestRefineConnection.mockResolvedValueOnce({ ok: true })
+    mockGetConfig.mockResolvedValue({
+      ...baseConfig,
+      llmRefine: {
+        enabled: true,
+        endpoint: 'https://example.com/v1',
+        model: 'gpt-4.1-mini',
+        apiKey: 'refine-key',
+      },
+    })
+
+    render(<SettingsPage />)
+    await waitFor(() => expect(mockGetConfig).toHaveBeenCalled())
+
+    fireEvent.click(screen.getByText('settings.testRefineConnection'))
+
+    await waitFor(() => expect(mockTestRefineConnection).toHaveBeenCalled())
+    expect(mockTestRefineConnection).toHaveBeenCalledWith({
+      enabled: true,
+      endpoint: 'https://example.com/v1',
+      model: 'gpt-4.1-mini',
+      apiKey: 'refine-key',
+    })
+    expect(screen.getByText('settings.result.refineConnectionSuccess')).toBeInTheDocument()
+  })
+
+  it('tests refine connection with unsaved form values', async () => {
+    mockTestRefineConnection.mockResolvedValueOnce({ ok: true })
+    render(<SettingsPage />)
+    await waitFor(() => expect(mockGetConfig).toHaveBeenCalled())
+
+    fireEvent.change(screen.getByLabelText(/settings\.refineEndpoint/), {
+      target: { value: 'https://example.com/v1' },
+    })
+    fireEvent.change(screen.getByLabelText(/settings\.refineModel/), {
+      target: { value: 'gpt-4.1-mini' },
+    })
+    fireEvent.change(screen.getByLabelText(/settings\.refineApiKey/), {
+      target: { value: 'refine-key' },
+    })
+
+    fireEvent.click(screen.getByText('settings.testRefineConnection'))
+
+    await waitFor(() => expect(mockTestRefineConnection).toHaveBeenCalled())
+    expect(mockTestRefineConnection).toHaveBeenCalledWith({
+      enabled: false,
+      endpoint: 'https://example.com/v1',
+      model: 'gpt-4.1-mini',
+      apiKey: 'refine-key',
+    })
+  })
+
+  it('blocks saving when refinement is enabled but config is incomplete', async () => {
+    render(<SettingsPage />)
+    await waitFor(() => expect(mockGetConfig).toHaveBeenCalled())
+
+    fireEvent.click(screen.getByRole('switch', { name: 'settings.llmRefineEnabled' }))
+    fireEvent.change(screen.getByLabelText('ptt'), { target: { value: 'Command+J' } })
+    fireEvent.click(screen.getByText('settings.saveConfig'))
+
+    expect(mockSetConfig).not.toHaveBeenCalled()
+    expect(screen.getByText('settings.result.refineConfigRequired')).toBeInTheDocument()
   })
 
   it('checks update and shows no-update state', async () => {

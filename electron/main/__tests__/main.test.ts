@@ -45,13 +45,17 @@ const mockGetAppConfig = vi.hoisted(() => vi.fn(() => ({ language: 'en', autoLau
 const mockGetASRConfig = vi.hoisted(() =>
   vi.fn(() => ({ provider: 'glm', region: 'cn', apiKeys: {}, lowVolumeMode: true })),
 )
+const mockMigrateApiKeysEncryption = vi.hoisted(() => vi.fn())
 const mockGetLLMRefineConfig = vi.hoisted(() =>
   vi.fn(() => ({
-    enabled: true,
+    enabled: false,
+    endpoint: '',
+    model: '',
+    apiKey: '',
   })),
 )
 const mockASRProviderCtor = vi.hoisted(() => vi.fn())
-const mockLLMProviderCtor = vi.hoisted(() => vi.fn())
+const mockRefineServiceCtor = vi.hoisted(() => vi.fn())
 
 const mockRegisterGlobalHotkeys = vi.hoisted(() => vi.fn())
 const mockHotkeyUnregisterAll = vi.hoisted(() => vi.fn())
@@ -119,7 +123,7 @@ vi.mock('../config-manager', () => ({
     getAppConfig: mockGetAppConfig,
     getASRConfig: mockGetASRConfig,
     getLLMRefineConfig: mockGetLLMRefineConfig,
-    migrateApiKeysEncryption: vi.fn(),
+    migrateApiKeysEncryption: mockMigrateApiKeysEncryption,
   },
 }))
 
@@ -127,8 +131,8 @@ vi.mock('../asr-provider', () => ({
   ASRProvider: mockASRProviderCtor,
 }))
 
-vi.mock('../llm-provider', () => ({
-  LLMProvider: mockLLMProviderCtor,
+vi.mock('../refine', () => ({
+  RefineService: mockRefineServiceCtor,
 }))
 
 vi.mock('../hotkey', () => ({
@@ -228,6 +232,7 @@ describe('main startup', () => {
 
     expect(mockInitEnv).toHaveBeenCalled()
     expect(mockInitializeLogger).toHaveBeenCalled()
+    expect(mockMigrateApiKeysEncryption).toHaveBeenCalled()
     expect(mockGetAppConfig).toHaveBeenCalled()
     expect(mockInitMainI18n).toHaveBeenCalledWith('en')
     expect(mockSetLoginItemSettings).toHaveBeenCalledWith({
@@ -242,14 +247,9 @@ describe('main startup', () => {
         lowVolumeMode: true,
       }),
     )
-    expect(mockLLMProviderCtor).toHaveBeenCalledWith(
-      {
-        enabled: true,
-      },
-      {
-        getASRConfig: expect.any(Function),
-      },
-    )
+    expect(mockRefineServiceCtor).toHaveBeenCalledWith({
+      getRefineConfig: expect.any(Function),
+    })
     expect(mockCreateBackgroundWindow).toHaveBeenCalled()
     expect(mockCreateTray).toHaveBeenCalled()
     expect(mockInitProcessor).toHaveBeenCalledWith(
@@ -257,8 +257,7 @@ describe('main startup', () => {
         getAsrProvider: expect.any(Function),
         getASRConfig: expect.any(Function),
         initializeASRProvider: expect.any(Function),
-        getLlmProvider: expect.any(Function),
-        initializeLLMProvider: expect.any(Function),
+        getRefineService: expect.any(Function),
       }),
     )
     expect(mockInitIPCHandlers).toHaveBeenCalledWith(

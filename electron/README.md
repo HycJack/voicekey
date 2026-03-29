@@ -19,7 +19,7 @@
 主进程核心模块：
 
 - `main.ts` - 应用入口、窗口管理、IPC 处理、PTT 流程编排
-- `audio/` - 音频处理流水线（录音会话、转换、ASR、LLM 润色、注入）
+- `audio/` - 音频处理流水线（录音会话、转换、ASR、文本润色、注入）
 - `hotkey/` - 快捷键解析与 PTT 行为绑定
 - `ipc/` - IPC 处理器（配置、会话、历史、日志、更新、浮窗）
 - `tray/` - 托盘菜单与本地化刷新
@@ -31,7 +31,7 @@
 - `hotkey-manager.ts` - 全局快捷键管理（基于 `globalShortcut`）
 - `iohook-manager.ts` - 低级键盘钩子（基于 `uiohook-napi`）
 - `asr-provider.ts` - GLM ASR 服务封装
-- `llm-provider.ts` - GLM 文本润色服务封装（Chat Completions HTTP API，复用 ASR 区域与 Key）
+- `refine/` - 文本润色模块（手动 OpenAI-compatible 配置、请求解析与连接测试）
 - `text-injector.ts` - 文本注入模拟（基于 `nut-js`）
 - `logger.ts` - 主进程日志与保留策略
 - `updater-manager.ts` - 版本检查与更新跳转
@@ -47,7 +47,7 @@ IPC 桥接层：
 跨进程共享代码：
 
 - `types.ts` - TypeScript 类型定义、IPC 通道常量
-- `constants.ts` - 应用级常量（GLM API 配置、默认快捷键、音频参数）
+- `constants.ts` - 应用级常量（GLM API 预设、通用 Chat 默认参数、默认快捷键、音频参数）
 
 ## 根文件
 
@@ -65,13 +65,13 @@ Electron 环境类型声明
 4. **数据传输** - 渲染进程将音频数据发送回主进程
 5. **格式转换** - `fluent-ffmpeg` 转换 WebM → MP3
 6. **语音识别** - `asr-provider` 调用 GLM API 转录
-7. **文本润色** - `llm-provider` 调用 GLM Chat Completions API 进行后处理（失败回退原文）
+7. **文本润色** - `refine/service` 根据手动填写的 OpenAI-compatible 配置调用 Chat Completions API 进行后处理（失败回退原文）
 8. **文本注入** - `text-injector` 模拟键盘输入到活动窗口
 
 ### 配置管理
 
 - 配置存储路径：`~/.config/voice-key/voice-key-config.json`（macOS/Linux）或 `%APPDATA%/voice-key/...`（Windows）
-- 内容：ASR 配置、LLM 润色开关配置、快捷键配置
+- 内容：ASR 配置、文本润色配置、快捷键配置
 - 通过 IPC 与设置页面同步
 
 ### IPC 通信架构

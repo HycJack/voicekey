@@ -221,13 +221,12 @@ describe('audio processor', () => {
       getAsrProvider: () => ({ transcribe }) as any,
       getASRConfig: () => ({ provider: 'glm', region: 'cn', apiKeys: { cn: '', intl: '' } }),
       initializeASRProvider: vi.fn(),
-      getLlmProvider: () =>
+      getRefineService: () =>
         ({
           isEnabled: () => true,
           hasValidConfig: () => true,
           refineText,
         }) as any,
-      initializeLLMProvider: vi.fn(),
     })
 
     await handleAudioData(Buffer.from('audio'))
@@ -262,13 +261,12 @@ describe('audio processor', () => {
       getAsrProvider: () => ({ transcribe }) as any,
       getASRConfig: () => ({ provider: 'glm', region: 'cn', apiKeys: { cn: '', intl: '' } }),
       initializeASRProvider: vi.fn(),
-      getLlmProvider: () =>
+      getRefineService: () =>
         ({
           isEnabled: () => true,
           hasValidConfig: () => true,
           refineText,
         }) as any,
-      initializeLLMProvider: vi.fn(),
     })
 
     await handleAudioData(Buffer.from('audio'))

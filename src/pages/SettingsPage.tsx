@@ -2,8 +2,8 @@
 import { CheckCircle2, XCircle, AlertTriangle, Eye, EyeOff } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { type LanguageSetting } from '@electron/shared/i18n'
-import { LOG_FILE_MAX_SIZE_MB, LOG_RETENTION_DAYS } from '@electron/shared/constants'
-import type { AppConfig, UpdateInfo } from '@electron/shared/types'
+import { LOG_FILE_MAX_SIZE_MB, LOG_RETENTION_DAYS, LLM_REFINE } from '@electron/shared/constants'
+import type { AppConfig, LLMRefineConfig, UpdateInfo } from '@electron/shared/types'
 import { LogViewerDialog } from '@/components/LogViewerDialog'
 import { HotkeySettings } from '@/components/HotkeySettings'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -20,6 +20,27 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { validateHotkey } from '@/lib/hotkey-utils'
+
+const defaultLLMRefineConfig: LLMRefineConfig = {
+  enabled: LLM_REFINE.ENABLED,
+  endpoint: LLM_REFINE.ENDPOINT,
+  model: LLM_REFINE.MODEL,
+  apiKey: LLM_REFINE.API_KEY,
+}
+
+function normalizeLLMRefineConfig(config?: Partial<LLMRefineConfig>): LLMRefineConfig {
+  return {
+    ...defaultLLMRefineConfig,
+    enabled: typeof config?.enabled === 'boolean' ? config.enabled : defaultLLMRefineConfig.enabled,
+    endpoint: config?.endpoint ?? defaultLLMRefineConfig.endpoint,
+    model: config?.model ?? defaultLLMRefineConfig.model,
+    apiKey: config?.apiKey ?? defaultLLMRefineConfig.apiKey,
+  }
+}
+
+function isRefineConfigComplete(config: LLMRefineConfig): boolean {
+  return Boolean(config.endpoint.trim() && config.model.trim() && config.apiKey.trim())
+}
 
 export default function SettingsPage() {
   const { t } = useTranslation()
@@ -38,9 +59,7 @@ export default function SettingsPage() {
       endpoint: '',
       language: 'auto',
     },
-    llmRefine: {
-      enabled: true,
-    },
+    llmRefine: defaultLLMRefineConfig,
     hotkey: {
       pttKey: '',
       toggleSettings: '',
@@ -56,7 +75,9 @@ export default function SettingsPage() {
   } | null>(null)
   const [saving, setSaving] = useState(false)
   const [showAsrApiKey, setShowAsrApiKey] = useState(false)
+  const [showRefineApiKey, setShowRefineApiKey] = useState(false)
   const [logDialogOpen, setLogDialogOpen] = useState(false)
+  const [testingRefine, setTestingRefine] = useState(false)
   const hasLoadedConfig = useRef(false)
   const hasLoadedUpdateStatus = useRef(false)
 
@@ -69,9 +90,7 @@ export default function SettingsPage() {
         const loadedConfig = await window.electronAPI.getConfig()
         const normalizedConfig: AppConfig = {
           ...loadedConfig,
-          llmRefine: {
-            enabled: loadedConfig.llmRefine?.enabled ?? true,
-          },
+          llmRefine: normalizeLLMRefineConfig(loadedConfig.llmRefine),
         }
         setConfig(normalizedConfig)
         setOriginalConfig(normalizedConfig)
@@ -115,6 +134,7 @@ export default function SettingsPage() {
 
     const pttValidation = validateHotkey(config.hotkey.pttKey)
     const settingsValidation = validateHotkey(config.hotkey.toggleSettings)
+    const normalizedRefineConfig = normalizeLLMRefineConfig(config.llmRefine)
 
     if (
       !pttValidation.valid ||
@@ -122,6 +142,11 @@ export default function SettingsPage() {
       config.hotkey.pttKey === config.hotkey.toggleSettings
     ) {
       setTestResult({ type: 'error', message: t('settings.result.hotkeyInvalid') })
+      return
+    }
+
+    if (normalizedRefineConfig.enabled && !isRefineConfigComplete(normalizedRefineConfig)) {
+      setTestResult({ type: 'error', message: t('settings.result.refineConfigRequired') })
       return
     }
 
@@ -133,11 +158,14 @@ export default function SettingsPage() {
         ...latestConfig,
         app: config.app,
         asr: config.asr,
-        llmRefine: config.llmRefine,
+        llmRefine: normalizedRefineConfig,
         hotkey: config.hotkey,
       })
 
-      setOriginalConfig(config)
+      setOriginalConfig({
+        ...config,
+        llmRefine: normalizedRefineConfig,
+      })
       setTestResult({ type: 'success', message: t('settings.result.saveSuccess') })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : t('common.unknownError')
@@ -180,6 +208,39 @@ export default function SettingsPage() {
     }
   }
 
+  const handleTestRefineConnection = async () => {
+    const normalizedRefineConfig = normalizeLLMRefineConfig(config.llmRefine)
+
+    if (!isRefineConfigComplete(normalizedRefineConfig)) {
+      setTestResult({ type: 'error', message: t('settings.result.refineConfigRequired') })
+      return
+    }
+
+    setTestingRefine(true)
+    setTestResult(null)
+    try {
+      const result = await window.electronAPI.testRefineConnection(normalizedRefineConfig)
+      if (result.ok) {
+        setTestResult({ type: 'success', message: t('settings.result.refineConnectionSuccess') })
+      } else if (result.message) {
+        setTestResult({
+          type: 'error',
+          message: t('settings.result.refineTestFailed', { message: result.message }),
+        })
+      } else {
+        setTestResult({ type: 'error', message: t('settings.result.refineConnectionFailed') })
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : t('common.unknownError')
+      setTestResult({
+        type: 'error',
+        message: t('settings.result.refineTestFailed', { message: errorMessage }),
+      })
+    } finally {
+      setTestingRefine(false)
+    }
+  }
+
   // Helper to update API Key for current region
   const handleApiKeyChange = (value: string) => {
     const region = config.asr.region || 'cn'
@@ -208,12 +269,27 @@ export default function SettingsPage() {
     }))
   }
 
+  const handleRefineConfigChange = (
+    key: Exclude<keyof LLMRefineConfig, 'enabled'>,
+    value: string,
+  ) => {
+    setConfig((prev) => ({
+      ...prev,
+      llmRefine: {
+        ...prev.llmRefine,
+        [key]: value,
+      },
+    }))
+  }
+
   const isSuccess = testResult?.type === 'success'
   const resultMessage = testResult?.message ?? ''
 
   const currentRegion = config.asr.region || 'cn'
   const currentApiKey = config.asr.apiKeys?.[currentRegion] || ''
+  const normalizedLLMRefineConfig = normalizeLLMRefineConfig(config.llmRefine)
   const llmRefineEnabled = config.llmRefine.enabled
+  const canTestRefine = isRefineConfigComplete(normalizedLLMRefineConfig)
 
   const isDirty =
     !!originalConfig &&
@@ -227,6 +303,9 @@ export default function SettingsPage() {
       config.asr.apiKeys.cn !== originalConfig.asr.apiKeys.cn ||
       config.asr.apiKeys.intl !== originalConfig.asr.apiKeys.intl ||
       config.llmRefine.enabled !== originalConfig.llmRefine.enabled ||
+      config.llmRefine.endpoint !== originalConfig.llmRefine.endpoint ||
+      config.llmRefine.model !== originalConfig.llmRefine.model ||
+      config.llmRefine.apiKey !== originalConfig.llmRefine.apiKey ||
       config.hotkey.pttKey !== originalConfig.hotkey.pttKey ||
       config.hotkey.toggleSettings !== originalConfig.hotkey.toggleSettings)
 
@@ -487,6 +566,75 @@ export default function SettingsPage() {
               className="no-drag cursor-pointer"
             />
           </div>
+
+          <p className="text-sm text-muted-foreground">{t('settings.llmRefineManualHelp')}</p>
+
+          <div className="space-y-2">
+            <Label htmlFor="refineEndpoint">
+              {t('settings.refineEndpoint')} <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="refineEndpoint"
+              type="text"
+              value={normalizedLLMRefineConfig.endpoint}
+              onChange={(e) => handleRefineConfigChange('endpoint', e.target.value)}
+              placeholder={t('settings.refineEndpointPlaceholder')}
+              className="no-drag"
+            />
+            <p className="text-sm text-muted-foreground">{t('settings.refineEndpointHelp')}</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="refineModel">
+              {t('settings.refineModel')} <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="refineModel"
+              type="text"
+              value={normalizedLLMRefineConfig.model}
+              onChange={(e) => handleRefineConfigChange('model', e.target.value)}
+              placeholder={t('settings.refineModelPlaceholder')}
+              className="no-drag"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="refineApiKey">
+              {t('settings.refineApiKey')} <span className="text-destructive">*</span>
+            </Label>
+            <div className="relative">
+              <Input
+                id="refineApiKey"
+                type={showRefineApiKey ? 'text' : 'password'}
+                value={normalizedLLMRefineConfig.apiKey}
+                onChange={(e) => handleRefineConfigChange('apiKey', e.target.value)}
+                placeholder={t('settings.refineApiKeyPlaceholder')}
+                className="no-drag pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowRefineApiKey((prev) => !prev)}
+                aria-label={
+                  showRefineApiKey ? t('settings.hideRefineKey') : t('settings.showRefineKey')
+                }
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground no-drag"
+              >
+                {showRefineApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleTestRefineConnection}
+            disabled={testingRefine || !canTestRefine}
+            className="no-drag cursor-pointer"
+          >
+            {testingRefine
+              ? t('settings.testingRefineConnection')
+              : t('settings.testRefineConnection')}
+          </Button>
         </CardContent>
       </Card>
 

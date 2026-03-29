@@ -4,7 +4,7 @@
 
 - `config-manager.test.ts` - 配置管理器单元测试。
 - `asr-provider.test.ts` - ASR Provider 请求与错误映射测试。
-- `llm-provider.test.ts` - GLM LLM Provider 端点解析、重试回退与错误映射测试。
+- `refine/__tests__/service.test.ts` - 文本润色服务的手动配置解析、endpoint 规范化、错误映射与连接测试。
 - `text-injector.test.ts` - 文本注入与权限检查测试。
 - `iohook-manager.test.ts` - 按键状态判定与修饰键精确匹配测试。
 - `history-manager.test.ts` - 历史记录增删清理与保留天数裁剪测试。

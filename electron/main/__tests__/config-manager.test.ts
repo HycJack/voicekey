@@ -107,16 +107,97 @@ describe('ConfigManager', () => {
   it('returns default llm refine config', async () => {
     const configManager = await createManager()
     const config = configManager.getLLMRefineConfig()
-    expect(config.enabled).toBe(LLM_REFINE.ENABLED)
+    expect(config).toEqual({
+      enabled: LLM_REFINE.ENABLED,
+      endpoint: LLM_REFINE.ENDPOINT,
+      model: LLM_REFINE.MODEL,
+      apiKey: LLM_REFINE.API_KEY,
+    })
   })
 
   it('persists partial llm refine config', async () => {
     const configManager = await createManager()
     configManager.setLLMRefineConfig({
       enabled: false,
+      endpoint: 'https://example.com/v1',
+      model: 'gpt-4.1-mini',
+      apiKey: 'test-key',
     })
     expect(configManager.getLLMRefineConfig()).toMatchObject({
       enabled: false,
+      endpoint: 'https://example.com/v1',
+      model: 'gpt-4.1-mini',
+      apiKey: 'test-key',
+    })
+  })
+
+  it('migrates legacy openai-compatible refine config to flat schema', async () => {
+    seedData = {
+      llmRefine: {
+        enabled: true,
+        provider: 'openai-compatible',
+        openaiCompatible: {
+          endpoint: 'https://example.com/v1',
+          model: 'gpt-4.1-mini',
+          apiKey: 'test-key',
+        },
+      },
+    }
+    const configManager = await createManager()
+    expect(configManager.getLLMRefineConfig()).toMatchObject({
+      enabled: true,
+      endpoint: 'https://example.com/v1',
+      model: 'gpt-4.1-mini',
+      apiKey: 'test-key',
+    })
+  })
+
+  it('migrates legacy glm-shared refine config to disabled manual config', async () => {
+    seedData = {
+      llmRefine: {
+        enabled: true,
+        provider: 'glm-shared',
+      },
+    }
+    const configManager = await createManager()
+    expect(configManager.getLLMRefineConfig()).toMatchObject({
+      enabled: false,
+      endpoint: '',
+      model: '',
+      apiKey: '',
+    })
+  })
+
+  it('migrates legacy boolean-only refine config to disabled manual config', async () => {
+    seedData = {
+      llmRefine: {
+        enabled: true,
+      },
+    }
+    const configManager = await createManager()
+    expect(configManager.getLLMRefineConfig()).toMatchObject({
+      enabled: false,
+      endpoint: '',
+      model: '',
+      apiKey: '',
+    })
+  })
+
+  it('decrypts encrypted llm refine api keys on read', async () => {
+    seedData = {
+      llmRefine: {
+        enabled: true,
+        endpoint: 'https://example.com/v1',
+        model: 'gpt-4.1-mini',
+        apiKey: `enc:${Buffer.from('encrypted:refine-key').toString('base64')}`,
+      },
+    }
+    const configManager = await createManager()
+    expect(configManager.getLLMRefineConfig()).toMatchObject({
+      enabled: true,
+      endpoint: 'https://example.com/v1',
+      model: 'gpt-4.1-mini',
+      apiKey: 'refine-key',
     })
   })
 

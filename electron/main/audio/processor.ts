@@ -5,7 +5,7 @@
  * - 接收渲染进程发来的音频数据
  * - 转换格式（WebM → MP3）
  * - 调用 ASR 进行语音转写
- * - 可选调用 LLM 进行文本润色（失败回退原文）
+ * - 可选调用文本润色服务进行后处理（失败回退原文）
  * - 注入转写文本到活跃窗口
  * - 保存历史记录
  *
@@ -23,8 +23,8 @@ import { textInjector } from '../text-injector'
 import { convertToMP3 } from './converter'
 import { getCurrentSession, updateSession, clearSession } from './session-manager'
 import type { ASRProvider } from '../asr-provider'
-import type { LLMProvider } from '../llm-provider'
 import type { ASRConfig } from '../../shared/types'
+import type { TextRefiner } from '../refine'
 
 /**
  * 处理器外部依赖
@@ -37,10 +37,8 @@ type ProcessorDeps = {
   getASRConfig: () => ASRConfig
   /** 初始化 ASR Provider */
   initializeASRProvider: () => void
-  /** 获取 LLM Provider 实例 */
-  getLlmProvider?: () => LLMProvider | null
-  /** 初始化 LLM Provider */
-  initializeLLMProvider?: () => void
+  /** 获取文本润色服务 */
+  getRefineService?: () => TextRefiner | null
 }
 
 let deps: ProcessorDeps
@@ -61,7 +59,7 @@ export function initProcessor(dependencies: ProcessorDeps): void {
  * 1. 保存 WebM 音频到临时文件
  * 2. 转换为 MP3 格式
  * 3. 调用 ASR 服务进行转写
- * 4. 调用 LLM 对文本进行润色（失败回退原文）
+ * 4. 调用文本润色服务进行后处理（失败回退原文）
  * 5. 保存到历史记录
  * 6. 注入文本到活跃窗口
  * 7. 清理临时文件
@@ -135,34 +133,32 @@ export async function handleAudioData(buffer: Buffer): Promise<void> {
       return
     }
 
-    // Step 4: LLM 润色（失败则回退原文）
+    // Step 4: 文本润色（失败则回退原文）
     let finalText = rawText
     let refineDuration = 0
-    let llmProvider = deps.getLlmProvider?.() ?? null
-    if (!llmProvider && deps.initializeLLMProvider && deps.getLlmProvider) {
-      deps.initializeLLMProvider()
-      llmProvider = deps.getLlmProvider()
-    }
+    const refineService = deps.getRefineService?.() ?? null
 
-    if (llmProvider?.isEnabled()) {
-      if (llmProvider.hasValidConfig()) {
+    if (refineService?.isEnabled()) {
+      if (refineService.hasValidConfig()) {
         const refineStartTime = Date.now()
         try {
-          console.log('[Audio:Processor] Refining transcription with LLM...')
-          const refined = await llmProvider.refineText(rawText)
+          console.log('[Audio:Processor] Refining transcription with text refinement service...')
+          const refined = await refineService.refineText(rawText)
           refineDuration = Date.now() - refineStartTime
           if (refined.trim().length > 0) {
             finalText = refined
-            console.log(`[Audio:Processor] ⏱️ LLM refine: ${refineDuration}ms`)
+            console.log(`[Audio:Processor] ⏱️ Text refine: ${refineDuration}ms`)
           } else {
-            console.warn('[Audio:Processor] LLM returned empty text, using raw transcription')
+            console.warn(
+              '[Audio:Processor] Text refinement returned empty text, using raw transcription',
+            )
           }
         } catch (error) {
           refineDuration = Date.now() - refineStartTime
-          console.error('[Audio:Processor] LLM refine failed, using raw transcription:', error)
+          console.error('[Audio:Processor] Text refinement failed, using raw transcription:', error)
         }
       } else {
-        console.warn('[Audio:Processor] LLM refine enabled but config is incomplete, skipped')
+        console.warn('[Audio:Processor] Text refinement enabled but config is incomplete, skipped')
       }
     }
 

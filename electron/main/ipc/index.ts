@@ -2,7 +2,7 @@
  * IPC 处理器统一注册入口
  *
  * 本模块负责注册所有 IPC 处理器，按功能域拆分为：
- * - config-handlers: 配置相关 (CONFIG_GET, CONFIG_SET, CONFIG_TEST)
+ * - config-handlers: 配置相关 (CONFIG_GET, CONFIG_SET, CONFIG_TEST, CONFIG_REFINE_TEST)
  * - session-handlers: 会话相关 (SESSION_START, SESSION_STOP, SESSION_STATUS, AUDIO_DATA, CANCEL_SESSION)
  * - history-handlers: 历史记录 (HISTORY_GET, HISTORY_CLEAR, HISTORY_DELETE)
  * - log-handlers: 日志相关 (LOG_GET_TAIL, LOG_OPEN_FOLDER, LOG_WRITE)
@@ -57,9 +57,9 @@ export type IPCHandlersDeps = {
  *       updateAutoLaunchState,
  *       refreshLocalizedUi,
  *       initializeASRProvider,
- *       initializeLLMProvider,
  *       registerGlobalHotkeys,
  *       getAsrProvider: () => asrProvider,
+ *       getRefineService: () => refineService,
  *     },
  *   })
  *   registerAllIPCHandlers()
@@ -92,7 +92,7 @@ export function registerAllIPCHandlers(): void {
   registerUpdaterHandlers()
   registerOverlayHandlers()
 
-  console.log('[IPC] All handlers registered: 6 modules, 21 channels')
+  console.log('[IPC] All handlers registered: 6 modules, 22 channels')
 }
 
 // Re-export types for external use

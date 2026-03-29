@@ -21,6 +21,7 @@ IPC 通信桥接脚本，运行在渲染进程上下文但可访问部分 Node.j
 - `getConfig()` - 获取完整应用配置
 - `setConfig(config)` - 保存配置
 - `testConnection(config)` - 测试 ASR API 连接
+- `testRefineConnection(config)` - 测试当前文本润色配置的 OpenAI-compatible 连接
 - `getAppLanguage()` - 获取主进程语言快照（setting/resolved/locale）
 - `onAppLanguageChanged(callback)` - 监听主进程语言变更广播
 

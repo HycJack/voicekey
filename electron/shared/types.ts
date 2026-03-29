@@ -30,6 +30,9 @@ export interface ASRConfig {
 
 export interface LLMRefineConfig {
   enabled: boolean
+  endpoint: string
+  model: string
+  apiKey: string
 }
 
 export interface HotkeyConfig {
@@ -83,12 +86,18 @@ export interface LogTailOptions {
   maxBytes?: number
 }
 
+export interface RefineConnectionResult {
+  ok: boolean
+  message?: string
+}
+
 // IPC 通道定义
 export const IPC_CHANNELS = {
   // 配置相关
   CONFIG_GET: 'config:get',
   CONFIG_SET: 'config:set',
   CONFIG_TEST: 'config:test',
+  CONFIG_REFINE_TEST: 'config:refine:test',
   APP_LANGUAGE_GET: 'app:language:get',
   APP_LANGUAGE_CHANGED: 'app:language:changed',
 
