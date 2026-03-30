@@ -5,10 +5,14 @@ import { createSettingsWindow } from '../window'
 import { handleStartRecording, handleStopRecording, getCurrentSession } from '../audio'
 import { parseAccelerator } from './parser'
 
+type RegisterGlobalHotkeysOptions = {
+  getWillRunRefine?: () => boolean
+}
+
 /**
  * 注册全局快捷键（PTT + 设置）
  */
-export function registerGlobalHotkeys(): void {
+export function registerGlobalHotkeys(options: RegisterGlobalHotkeysOptions = {}): void {
   const hotkeyConfig = configManager.getHotkeyConfig()
   const pttKey = hotkeyConfig.pttKey
 
@@ -46,7 +50,9 @@ export function registerGlobalHotkeys(): void {
 
       // Stop Recording
       if (!isPressed && session && session.status === 'recording') {
-        handleStopRecording()
+        handleStopRecording({
+          willRunRefine: options.getWillRunRefine?.() ?? false,
+        })
       }
     }
 

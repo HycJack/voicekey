@@ -5,6 +5,10 @@ import { t } from '../i18n'
 
 let currentSession: VoiceSession | null = null
 
+type HandleStopRecordingOptions = {
+  willRunRefine?: boolean
+}
+
 export function getCurrentSession(): VoiceSession | null {
   return currentSession
 }
@@ -62,7 +66,7 @@ export async function handleStartRecording(): Promise<void> {
   }
 }
 
-export async function handleStopRecording(): Promise<void> {
+export async function handleStopRecording(options: HandleStopRecordingOptions = {}): Promise<void> {
   if (!currentSession || currentSession.status !== 'recording') {
     console.log(
       '[Audio:Session] handleStopRecording: no active recording session, status:',
@@ -78,7 +82,11 @@ export async function handleStopRecording(): Promise<void> {
     currentSession.duration = recordingDuration
     currentSession.status = 'processing'
 
-    updateOverlay({ status: 'processing' })
+    updateOverlay({
+      status: 'processing',
+      processingStage: 'transcribing',
+      processingTotalStages: options.willRunRefine ? 2 : 1,
+    })
 
     const bgWindow = getBackgroundWindow()
     if (bgWindow) {

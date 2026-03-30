@@ -143,10 +143,13 @@ export const IPC_CHANNELS = {
 } as const
 
 export type OverlayStatus = 'recording' | 'processing' | 'success' | 'error'
+export type OverlayProcessingStage = 'transcribing' | 'refining'
 
 export interface OverlayState {
   status: OverlayStatus
   message?: string
+  processingStage?: OverlayProcessingStage
+  processingTotalStages?: 1 | 2
 }
 
 export type IPCChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]

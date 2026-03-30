@@ -111,6 +111,16 @@ function initializeRefineService() {
   })
 }
 
+function willRunRefine(): boolean {
+  return Boolean(refineService?.isEnabled() && refineService.hasValidConfig())
+}
+
+function registerHotkeys(): void {
+  registerGlobalHotkeys({
+    getWillRunRefine: willRunRefine,
+  })
+}
+
 // 应用程序生命周期
 app.whenReady().then(async () => {
   initEnv() // 必须第一个调用
@@ -166,7 +176,7 @@ app.whenReady().then(async () => {
       updateAutoLaunchState,
       refreshLocalizedUi,
       initializeASRProvider,
-      registerGlobalHotkeys,
+      registerGlobalHotkeys: registerHotkeys,
       getAsrProvider: () => asrProvider,
       getRefineService: () => refineService,
     },
@@ -175,7 +185,10 @@ app.whenReady().then(async () => {
     session: {
       // 这些现在直接从 audio/ 模块导入
       handleStartRecording,
-      handleStopRecording,
+      handleStopRecording: () =>
+        handleStopRecording({
+          willRunRefine: willRunRefine(),
+        }),
       handleAudioChunk,
       handleCancelSession,
       getCurrentSession,
@@ -192,7 +205,7 @@ app.whenReady().then(async () => {
   // 检查更新
   void UpdaterManager.checkForUpdates()
   // 注册全局快捷键
-  registerGlobalHotkeys()
+  registerHotkeys()
   // 启动 ioHook
   ioHookManager.start()
 

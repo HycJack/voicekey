@@ -12,8 +12,8 @@ import { IPC_CHANNELS, type OverlayState } from '../../shared/types'
 let overlayWindow: BrowserWindow | null = null
 
 // 浮窗尺寸常量
-const OVERLAY_WIDTH = 200
-const OVERLAY_HEIGHT = 60
+const OVERLAY_WIDTH = 248
+const OVERLAY_HEIGHT = 76
 const BOTTOM_MARGIN = 60
 
 /**

@@ -211,6 +211,11 @@ async function finalizeSessionIfReady(sessionState: ChunkSessionState): Promise<
       if (!isSessionUsable(sessionState.sessionId)) return
 
       try {
+        updateOverlay({
+          status: 'processing',
+          processingStage: 'refining',
+          processingTotalStages: 2,
+        })
         console.log('[Audio:Processor] Refining aggregated transcription...')
         const refined = await refineService.refineText(rawText)
         if (refined.trim().length > 0) {
