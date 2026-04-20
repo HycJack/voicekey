@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.13](https://github.com/BuildWithAIs/voicekey/compare/v0.1.12...v0.1.13) (2026-04-20)
+
+### Features
+
+- **hud:** split processing into transcribe and refine stages ([810e512](https://github.com/BuildWithAIs/voicekey/commit/810e512c6775f7ddfe54a139dbee9d134bfb05ac))
+- **refine:** add remote glossary refresh ([8b77a1b](https://github.com/BuildWithAIs/voicekey/commit/8b77a1b41d9496b51cf3f58d50cbec0d942942a5))
+- **ui:** distinguish ASR and LLM refinement stages in HUD ([dd0b027](https://github.com/BuildWithAIs/voicekey/commit/dd0b027d15bce5074be68353f679d212594f418d))
+
 ### [0.1.12](https://github.com/BuildWithAIs/voicekey/compare/v0.1.11...v0.1.12) (2026-03-30)
 
 ### Features
